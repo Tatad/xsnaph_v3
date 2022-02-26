@@ -181,7 +181,7 @@ class HomeController extends Controller
         $now = Carbon::now();
         $fromQuarter = $now->lastOfQuarter();
 
-        $input['quarter'] = 1;
+        //$input['quarter'] = 1;
 
         switch ($input['quarter']) {
             case 1:
@@ -289,7 +289,7 @@ class HomeController extends Controller
         $now = Carbon::now();
         $fromQuarter = $now->lastOfQuarter();
 
-        $input['quarter'] = 1;
+        //$input['quarter'] = 1;
 
         switch ($input['quarter']) {
             case 1:
