@@ -211,6 +211,7 @@ class HomeController extends Controller
         foreach($results[0] as $key => $rows){
             if ($key < 5) continue;
             if($rows[0] != 'Total' && collect($rows[0])->isNotEmpty()){
+            //dd();
                 //dd(Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[2])))->format('Y-m-d'));
                 Sales::create([
                     'batch_number' => ((collect($getSalesBatchNumber)->isEmpty()) ? 1 : ($getSalesBatchNumber->batch_number+1)),
@@ -223,11 +224,11 @@ class HomeController extends Controller
                     'source' => $rows[3],
                     'reference' => $rows[4],
                     'description' => $rows[5],
-                    'tax' => $rows[6],
+                    'tax' => (floatval(str_replace( ',', '', $rows[6] ))),
                     'tax_rate' => $rows[7],
                     'tax_rate_name' => $rows[8],
-                    'gross' => $rows[9],
-                    'net' => $rows[10],
+                    'gross' => (floatval(str_replace( ',', '', $rows[9] ))),
+                    'net' => (floatval(str_replace( ',', '', $rows[10] ))),
                     'status' => $rows[11]
                 ]);
             }
@@ -268,9 +269,9 @@ class HomeController extends Controller
                     'reference' => $rows[3],
                     'item_code' => $rows[4],
                     'description' => $rows[5],
-                    'quantity' => $rows[6],
+                    'quantity' => (floatval(str_replace( ',', '', $rows[6] ))),
                     'unit_price' => abs($rows[7]),
-                    'gross' => $rows[8],
+                    'gross' => (floatval(str_replace( ',', '', $rows[8] ))),
                     'account' => $rows[9],
                     'account_code' => $rows[10]
                 ]);
@@ -339,9 +340,9 @@ class HomeController extends Controller
                     'description' => $rows[4],
                     'tax_rate' => $rows[5],
                     'tax_rate_name' => $rows[6],
-                    'tax' => $rows[7],
-                    'net' => $rows[8],
-                    'gross' => $rows[9],
+                    'tax' => (floatval(str_replace( ',', '', $rows[7] ))),
+                    'net' => (floatval(str_replace( ',', '', $rows[8] ))),
+                    'gross' => (floatval(str_replace( ',', '', $rows[9] ))),
                     'status' => $rows[10]
                 ]);
             }
