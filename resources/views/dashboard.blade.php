@@ -16,6 +16,15 @@
                           </button>
                         </div>
                     @endif
+
+                    @if (session('success_status'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                          <strong>{{ session('success_status') }}</strong>
+                          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                    @endif
                     <!-- <excel-uploader></excel-uploader> -->
 
                     <form action="/upload-excel" method="POST" class="form-inline" enctype="multipart/form-data">

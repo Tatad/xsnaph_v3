@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use LangleyFoxall\XeroLaravel\OAuth2;
 use LangleyFoxall\XeroLaravel\XeroApp;
 use League\OAuth2\Client\Token\AccessToken;
+use App\Models\UserOrganization;
 
 class XeroController extends Controller
 {
@@ -46,14 +47,31 @@ class XeroController extends Controller
                     new AccessToken(collect($accessToken)->toArray()),
                     $tenant->tenantId
                 );
-
-                DB::table('user_organizations')->insert([
+                $userOrg = new UserOrganization();
+                // $userOrg = DB::table('user_organizations')->insert([
+                //     'user_id' => auth()->user()->id,
+                //     'xero_access_token' => json_encode($accessToken),
+                //     'tenant_id' => $tenant->tenantId,
+                //     'org_name' => $xero->organisations->first()->Name
+                // ]);
+                $userOrg->user_id = auth()->user()->id;
+                $userOrg->xero_access_token = json_encode($accessToken);
+                $userOrg->tenant_id = $tenant->tenantId;
+                $userOrg->org_name = $xero->organisations->first()->Name;
+                $userOrg->save();
+                
+                DB::table('user_to_organizations')->insert([
                     'user_id' => auth()->user()->id,
-                    'xero_access_token' => json_encode($accessToken),
-                    'tenant_id' => $tenant->tenantId,
-                    'org_name' => $xero->organisations->first()->Name
+                    'org_id' => $userOrg->id,
+                    'role' => 'owner'
                 ]);
                 
+            }else{
+                DB::table('user_to_organizations')->insert([
+                    'user_id' => auth()->user()->id,
+                    'org_id' => $xeroCheck->id,
+                    'role' => 'member'
+                ]);
             }
         }
         return redirect('/home')->with('status', 'Organisation update success!');

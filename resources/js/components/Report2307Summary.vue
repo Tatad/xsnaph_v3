@@ -34,9 +34,9 @@
                 {{props.row.created_at | formatDate}}
              </div>
 
-             <div slot="actions" slot-scope="props">
+             <!-- <div slot="actions" slot-scope="props">
              	<a :href="/download-2307/+props.row.id" target="_blank"><button class="btn btn-primary">Download</button></a>
-             </div>
+             </div> -->
 
 
             <div slot="batch_number" slot-scope="props">
@@ -94,7 +94,7 @@
 			return{
 				childColumns: ['selected','contact_name','period_from','period_to','source','reference','description','item_code','quantity','unit_price','gross','account','account_code','actions'],
 				editableColumns:['quantity'],
-				columns: ['batch_number','created_at','actions'],
+				columns: ['batch_number','created_at'],
 				purchaseRecords: [],
 				options: {
 			      headings: {

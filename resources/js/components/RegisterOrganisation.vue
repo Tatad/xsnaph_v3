@@ -220,18 +220,18 @@
                     classification:'individual',
                     reportingCycle:'calendar',
                     fiscalCalendar:'December',
-                    tradeName: 'testtt',
-                    organizationName:'test',
-                    firstName:'test',
-                    middleName:'test',
-                    lastName:'test',
-                    email:'test@test.com',
-                    subStreet:'test',
-                    street:'test',
-                    barangay:'test',
-                    city:'test',
-                    province:'test',
-                    zipCode:'test'
+                    tradeName: '',
+                    organizationName:'',
+                    firstName:'',
+                    middleName:'',
+                    lastName:'',
+                    email:'',
+                    subStreet:'',
+                    street:'',
+                    barangay:'',
+                    city:'',
+                    province:'',
+                    zipCode:''
                 }
             }
         },
@@ -247,6 +247,8 @@
             },
             showModal(org){
                 this.register.tenantId = org.tenant_id
+                this.register.tradeName = org.org_name
+                this.register.organizationName = org.org_name
                 this.orgInfo = org
                 $('#registerModal').modal('show')
             },

@@ -54,7 +54,10 @@ class HomeController extends Controller
 
     public function getOrganizations(){
 
-        $xeroOrgs = DB::table('user_organizations')->select('user_organizations.*','organizations.org_id')->leftJoin('organizations', 'organizations.org_id','=','user_organizations.id')->where(['user_id' => auth()->user()->id])->get();
+        //$xeroOrgs = DB::table('user_organizations')->select('user_organizations.*','organizations.org_id')->leftJoin('organizations', 'organizations.org_id','=','user_organizations.id')->where(['user_id' => auth()->user()->id])->get();
+        // return $xeroOrgs;
+
+        $xeroOrgs = DB::table('user_to_organizations')->select('user_to_organizations.*','organizations.org_id', 'user_organizations.*')->leftJoin('organizations', 'organizations.org_id','=','user_to_organizations.org_id')->leftJoin('user_organizations','user_organizations.id','=','user_to_organizations.org_id')->where(['user_to_organizations.user_id' => auth()->user()->id])->get();
         return $xeroOrgs;
     }
 
@@ -157,6 +160,12 @@ class HomeController extends Controller
         $org->tenant_id = $input['tenantId'];
         $org->save();
 
+        // DB::table('user_to_organizations')->insert([
+        //     'user_id' => auth()->user()->id,
+        //     'org_id' => $input['orgId'],
+        //     'role' => 'owner'
+        // ]);
+
         return 'success';
     }
 
@@ -200,10 +209,10 @@ class HomeController extends Controller
         $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
         
         //dd($parsedPeriodFrom);
-        $getRecords = DB::table('sales')->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
+        $getRecords = DB::table('sales')->where('org_id', '=', $input['org_id'])->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
 
         if(collect($getRecords)->isNotEmpty()){
-            return redirect('/sales-summary')->with('status','You have an existing record for that period.');;
+            return redirect('/sales-summary')->with('status','You have an existing record for that period.');
         }
 
         //dd($getRecords);
@@ -211,7 +220,8 @@ class HomeController extends Controller
         foreach($results[0] as $key => $rows){
             if ($key < 5) continue;
             if($rows[0] != 'Total' && collect($rows[0])->isNotEmpty()){
-            //dd();
+                //dd($rows);
+            //dd(is_float($rows[2]));
                 //dd(Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[2])))->format('Y-m-d'));
                 Sales::create([
                     'batch_number' => ((collect($getSalesBatchNumber)->isEmpty()) ? 1 : ($getSalesBatchNumber->batch_number+1)),
@@ -220,7 +230,7 @@ class HomeController extends Controller
                     'period_to' => $lastQuarter,
                     'contact_name' => $rows[0],
                     'invoice_number' => $rows[1],
-                    'invoice_date' => Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[2])))->format('Y-m-d'),
+                    'invoice_date' => ((is_float($rows[2]) || is_int($rows[2])) ? Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[2])))->format('Y-m-d') : Carbon::parse($rows[2])->format('Y-m-d') ),
                     'source' => $rows[3],
                     'reference' => $rows[4],
                     'description' => $rows[5],
@@ -233,7 +243,8 @@ class HomeController extends Controller
                 ]);
             }
         }
-        return redirect('/select-organization/'.$input['tenant_id']);
+        return redirect('/sales-summary')->with('success_status','You have successfully uploaded the record.');
+        //return redirect('/select-organization/'.$input['tenant_id'])->with('success_status','You have successfully uploaded the record.');
     }
 
     public function upload2307Report(Request $request){
@@ -263,7 +274,7 @@ class HomeController extends Controller
                     'org_id' => $input['org_id'],
                     'period_from' => $parsedPeriodFrom,
                     'period_to' => $parsedPeriodTo,
-                    'invoice_date' => Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[0])))->format('Y-m-d'),
+                    'invoice_date' => ((is_float($rows[2]) || is_int($rows[2])) ? Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[0])))->format('Y-m-d') : Carbon::parse($rows[0])->format('Y-m-d') ),
                     'contact_name' => $rows[1],
                     'source' => $rows[2],
                     'reference' => $rows[3],
@@ -308,7 +319,7 @@ class HomeController extends Controller
         $fromQuarter = Carbon::parse($now)->firstOfQuarter()->toDateTimeString();
         $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
 
-        $getRecords = DB::table('purchases')->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
+        $getRecords = DB::table('purchases')->where('org_id', '=', $input['org_id'])->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
 
         if(collect($getRecords)->isNotEmpty()){
             return redirect('/sales-summary')->with('status','You have an existing record for that period.');;
@@ -334,7 +345,7 @@ class HomeController extends Controller
                     'period_from' => $fromQuarter,
                     'period_to' => $lastQuarter,
                     'contact_name' => $rows[0],
-                    'invoice_date' => Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[1])))->format('Y-m-d'),
+                    'invoice_date' =>(is_float($rows[1]) ? Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[1])))->format('Y-m-d') : Carbon::parse($rows[1])->format('Y-m-d') ),
                     'source' => $rows[2],
                     'reference' => $rows[3],
                     'description' => $rows[4],
@@ -347,7 +358,7 @@ class HomeController extends Controller
                 ]);
             }
         }
-        return redirect('/purchases-summary');
+        return redirect('/purchases-summary')->with('success_status','You have successfully uploaded the record.');
     }
 
     public function get_string_between($string, $start, $end){
@@ -420,11 +431,11 @@ class HomeController extends Controller
         foreach($sales as $sale){
             $contactInfo = collect($contacts)->where('Name', $sale['contact_name'])->first();
             //dd($contactInfo['TaxNumber']);
-            $sale['tin_number'] = ($contactInfo['TaxNumber']) ? $contactInfo['TaxNumber'] : '--';
+            $sale['tin_number'] = ($contactInfo['TaxNumber']) ? (strpos($contactInfo['TaxNumber'], '-') == false ) ? $this->hyphenate(str_pad($contactInfo['TaxNumber'],9,"0")) : $contactInfo['TaxNumber'] : '--';
             $sale['contact_name'] = $contactInfo['Name'];
             $sale['first_name'] = $contactInfo['FirstName'];
             $sale['last_name'] = $contactInfo['LastName'];
-            $sale['taxable_month'] = Carbon::parse($sale['period_to'])->endOfMonth()->format('d F Y');
+            $sale['taxable_month'] = Carbon::parse($sale['invoice_date'])->endOfMonth()->format('d F Y');
 
             if(strpos($sale['tax_rate_name'], 'Tax Exempt Sales') == false){
                 $grandTotalNet += $sale['net']; 
@@ -502,11 +513,11 @@ class HomeController extends Controller
             $contactInfo = collect($contacts)->where('Name', $purchase['contact_name'])->first();
             //dd($contactInfo['TaxNumber']);
             //$purchase['tin_number'] = ($contactInfo['TaxNumber']) ? $contactInfo['TaxNumber'] : 'N/A';
-            $purchase['tin_number'] = ($contactInfo['TaxNumber']) ? (strpos($contactInfo['TaxNumber'], '-') == false ) ? $this->hyphenate($contactInfo['TaxNumber']) : $contactInfo['TaxNumber'] : '--';
+            $purchase['tin_number'] = ($contactInfo['TaxNumber']) ? (strpos($contactInfo['TaxNumber'], '-') == false ) ? $this->hyphenate(str_pad($contactInfo['TaxNumber'],9,"0")) : $contactInfo['TaxNumber'] : '--';
             $purchase['contact_name'] = $contactInfo['Name'];
             $purchase['first_name'] = $contactInfo['FirstName'];
             $purchase['last_name'] = $contactInfo['LastName'];
-            $purchase['taxable_month'] = Carbon::parse($purchase['period_to'])->endOfMonth()->format('d F Y');
+            $purchase['taxable_month'] = Carbon::parse($purchase['invoice_date'])->endOfMonth()->format('d F Y');
 
             if(strpos($purchase['tax_rate_name'], 'Tax on Purchases') == false){
                 $grandTotalNet += $purchase['net']; 
@@ -717,7 +728,7 @@ class HomeController extends Controller
             $data->first_name = $contactInfo->FirstName;
             $data->last_name = $contactInfo->LastName;
 
-            $data->taxable_month = Carbon::parse($data->period_to)->endOfMonth()->format('d F Y');
+            $data->taxable_month = Carbon::parse($data->invoice_date)->endOfMonth()->format('d F Y');
 
             if(strpos($data->tax_rate_name, 'Tax Exempt') == false){
                 $grandTotalNetSales += $data->net; 
@@ -747,13 +758,13 @@ class HomeController extends Controller
         foreach(($purchaseRecordConverted) as $key => $data){
             $contactInfo = collect($contacts)->where('Name', $data->contact_name)->first();
             //dd($contactInfo['Addresses'][0]);
-            $data->tin_number = ($contactInfo->TaxNumber) ? (strpos($contactInfo->TaxNumber, '-') == false ) ? $this->hyphenate($contactInfo->TaxNumber) : $contactInfo->TaxNumber : '--';
+            $data->tin_number = ($contactInfo->TaxNumber) ? (strpos($contactInfo->TaxNumber, '-') == false ) ? $this->hyphenate(str_pad($contactInfo->TaxNumber,9,"0")) : $contactInfo->TaxNumber : '--';
             
             $data->contact_name = $contactInfo->Name;
             $data->first_name = $contactInfo->FirstName;
             $data->last_name = $contactInfo->LastName;
 
-            $data->taxable_month = Carbon::parse($data->period_to)->endOfMonth()->format('d F Y');
+            $data->taxable_month = Carbon::parse($data->invoice_date)->endOfMonth()->format('d F Y');
 
             if(strpos($data->tax_rate_name, 'Tax Exempt') == false){
                 $grandTotalNetPurchase += $data->net; 
