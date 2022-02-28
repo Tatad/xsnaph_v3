@@ -190,8 +190,6 @@ class HomeController extends Controller
         $now = Carbon::now();
         $fromQuarter = $now->lastOfQuarter();
 
-        //$input['quarter'] = 1;
-
         switch ($input['quarter']) {
             case 1:
                 $now = new Carbon('first day of January '.$year, 'Asia/Manila');
@@ -208,7 +206,6 @@ class HomeController extends Controller
         $fromQuarter = Carbon::parse($now)->firstOfQuarter()->toDateTimeString();
         $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
         
-        //dd($parsedPeriodFrom);
         $getRecords = DB::table('sales')->where('org_id', '=', $input['org_id'])->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
 
         if(collect($getRecords)->isNotEmpty()){
@@ -217,12 +214,17 @@ class HomeController extends Controller
 
         //dd($getRecords);
         //dd($results[0]);
+
+        if($results[0][0][0] !== 'Receivable Invoice Detail'){
+            return redirect('/sales-summary')->with('status','Error encountered you are uploading the wrong file.');;
+        }
         foreach($results[0] as $key => $rows){
+            // dd($rows[0]);
+            // if($rows[0] !== 'Receivable Invoice Detail'){
+            //     return redirect('/sales-summary')->with('status','Error encountered you are uploading the wrong file.');;
+            // }
             if ($key < 5) continue;
             if($rows[0] != 'Total' && collect($rows[0])->isNotEmpty()){
-                //dd($rows);
-            //dd(is_float($rows[2]));
-                //dd(Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[2])))->format('Y-m-d'));
                 Sales::create([
                     'batch_number' => ((collect($getSalesBatchNumber)->isEmpty()) ? 1 : ($getSalesBatchNumber->batch_number+1)),
                     'org_id' => $input['org_id'],
@@ -301,8 +303,6 @@ class HomeController extends Controller
         $now = Carbon::now();
         $fromQuarter = $now->lastOfQuarter();
 
-        //$input['quarter'] = 1;
-
         switch ($input['quarter']) {
             case 1:
                 $now = new Carbon('first day of January '.$year, 'Asia/Manila');
@@ -318,11 +318,11 @@ class HomeController extends Controller
         }
         $fromQuarter = Carbon::parse($now)->firstOfQuarter()->toDateTimeString();
         $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
-
+        
         $getRecords = DB::table('purchases')->where('org_id', '=', $input['org_id'])->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
-
+        //dd($getRecords);
         if(collect($getRecords)->isNotEmpty()){
-            return redirect('/sales-summary')->with('status','You have an existing record for that period.');;
+            return redirect('/purchases-summary')->with('status','You have an existing record for that period.');
         }
         
         // if(str_contains($results[0][2][0],'For the period')){
@@ -335,7 +335,13 @@ class HomeController extends Controller
         //     $parsedPeriodTo = Carbon::parse($periodTo)->format('Y-m-d');
             
         // }
+        //dd($results[0][0][0]);
+        //dd($results[0][0][0] );
+        if($results[0][0][0] !== 'Payable Invoice Detail'){
+            return redirect('/purchases-summary')->with('status','Error encountered you are uploading the wrong file.');;
+        }
         foreach($results[0] as $key => $rows){
+            //dd($rows);
             if ($key < 5) continue;
             if($rows[0] != 'Total' && collect($rows[0])->isNotEmpty()){
                 //dd(Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[2])))->format('Y-m-d'));
@@ -345,7 +351,7 @@ class HomeController extends Controller
                     'period_from' => $fromQuarter,
                     'period_to' => $lastQuarter,
                     'contact_name' => $rows[0],
-                    'invoice_date' =>(is_float($rows[1]) ? Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[1])))->format('Y-m-d') : Carbon::parse($rows[1])->format('Y-m-d') ),
+                    'invoice_date' =>((is_float($rows[1]) || is_int($rows[1])) ? Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[1])))->format('Y-m-d') : Carbon::parse($rows[1])->format('Y-m-d') ),
                     'source' => $rows[2],
                     'reference' => $rows[3],
                     'description' => $rows[4],
