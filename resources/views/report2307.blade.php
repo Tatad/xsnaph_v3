@@ -19,7 +19,7 @@
                         <!-- <input type="file" class="form-control" name="excel-file"> -->
                         <div class="row">
                             <div class="col-sm-6 custom-file">
-                                <input type="file" class="custom-file-input" id="customFile" name="excel-file" @change="onFileChange">
+                                <input type="file" class="custom-file-input" id="customFile" name="excel-file" @change="onFileChange" required>
                                 <label class="custom-file-label" for="customFile" v-cloak>@{{fileName}}</label>
                             </div>
                             <input type="hidden" value="{{session()->get('xeroOrg')->id}}" name="org_id">

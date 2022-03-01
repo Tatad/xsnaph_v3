@@ -44,8 +44,8 @@
             <td><b>TAXABLE</b></td>    
             <td><b>TAXPAYER</b></td>    
             <td><b>REGISTERED NAME</b></td>    
-            <td><b>NAME OF SUPPLIER</b></td>    
-            <td><b>SUPPLIER's ADDRESS</b></td>    
+            <td><b>NAME OF CUSTOMER</b></td>    
+            <td><b>CUSTOMER's ADDRESS</b></td>    
             <td><b>AMOUNT OF</b></td>    
             <td><b>AMOUNT OF</b></td>    
             <td><b>AMOUNT OF</b></td>    

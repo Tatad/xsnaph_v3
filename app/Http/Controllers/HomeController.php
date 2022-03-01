@@ -253,7 +253,7 @@ class HomeController extends Controller
         $input = $request->all();
         //dd($input);
         $results = \Excel::toArray(new PeriodDates, $input['excel-file']);
-        $getSalesBatchNumber = DB::table('sales')->where('org_id', $input['org_id'])->orderBy('created_at', 'desc')->first();
+        $getSalesBatchNumber = DB::table('reports_2307')->where('org_id', $input['org_id'])->orderBy('created_at', 'desc')->first();
         // dd(((collect($getSalesBatchNumber)->isEmpty()) ? 1 : ($getSalesBatchNumber->batch_number+1)));
         // dd($getSalesBatchNumber);
         if(str_contains($results[0][2][0],'For the period')){
@@ -728,7 +728,7 @@ class HomeController extends Controller
         $salesRecordConverted = collect($salesRecords)->values()->toArray();
         foreach(($salesRecordConverted) as $key => $data){
             $contactInfo = collect($contacts)->where('Name', $data->contact_name)->first();
-            $data->tin_number = ($contactInfo->TaxNumber) ? (strpos($contactInfo->TaxNumber, '-') == false ) ? $this->hyphenate($contactInfo->TaxNumber) : $contactInfo->TaxNumber : '--';
+            $data->tin_number = ($contactInfo->TaxNumber) ? (strpos($contactInfo->TaxNumber, '-') == false ) ? $this->hyphenate(str_pad($contactInfo->TaxNumber,9,"0")) : $contactInfo->TaxNumber : '--';
             
             $data->contact_name = $contactInfo->Name;
             $data->first_name = $contactInfo->FirstName;
