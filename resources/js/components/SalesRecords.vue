@@ -5,19 +5,6 @@
 		    <div slot="child_row" slot-scope="props">
 		    	<button class="btn btn-danger" @click.prevent="showDeleteModal()">Delete Multiple Sales Record</button>
 		    	<v-client-table :columns="childColumns" v-model="props.row.data" :options="options">
-
-		    		<!-- <div slot="quantity" slot-scope="{row, update, setEditing, isEditing, revertValue}">
-				      <span @click="setEditing(true)" v-if="!isEditing()">
-				        <a>{{row.quantity}}</a>
-				      </span>
-				      <span v-else>
-				        <input type="text" v-model="row.quantity">
-				        <button type="button" class="btn btn-info btn-xs" @click="update(row.quantity); setEditing(false)">Submit</button>
-				       <button type="button" class="btn btn-default btn-xs" @click="revertValue(); setEditing(false)">Cancel</button>
-				      
-				      </span>
-
-				    </div> -->
 				    <input slot="selected" slot-scope="props" type="checkbox" :value="props.row.id" v-model="checkedRows">
 				    <div slot="actions" slot-scope="props">
 				    	<button @click.prevent="showDeleteModal(props.row,'single')" class="btn btn-danger">Remove</button>
@@ -31,7 +18,7 @@
              </div>
 
              <div slot="actions" slot-scope="props">
-             	<a :href="/download-sales/+props.row.id" target="_blank"><button class="btn btn-primary">Download</button></a>
+             	<!-- <a :href="/download-sales/+props.row.id" target="_blank"><button class="btn btn-primary">Download</button></a> -->
              	<button class="btn btn-danger" @click.prevent="showDeleteModal(props.row,'all')">Remove</button>
              </div>
 
@@ -39,7 +26,7 @@
             <div slot="batch_number" slot-scope="props">
                 {{props.row.id}}
              </div>
-	  </v-client-table>
+	  	</v-client-table>
 
 	  <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
 		  <div class="modal-dialog modal-dialog-centered" role="document">

@@ -1,21 +1,20 @@
 <template>
 	<div>
-        <div class="row container wrapper" style="padding-bottom:12rem">
+        <div class="row container wrapper" style="padding-bottom:2rem">
         	<form class="container">
 
-		<h5>Date Range</h5>
+		<h5>Date</h5>
         		<div class="row">
         			<div class="col-md-3">
 						<datepicker 
-				      :value="this.defaultDate"
 				      :format="DatePickerFormat"
 				      minimum-view="year"              
 				      name="datepicker"
 				      id="input-id"
-				      input-class="form-control" v-model="form.year" required></datepicker>
+				      input-class="form-control" v-model="form.year" required @closed="updateYear()"></datepicker>
 				</div>
 				<div class="col-md-2">
-			      <select class="form-control" v-model="form.quarter" required>
+			      <select class="form-control" v-model="form.quarter" required @change="updateQuarter()">
 			      	<option value="1">1st Quarter</option>
 			      	<option value="2">2nd Quarter</option>
 			      	<option value="3">3rd Quarter</option>
@@ -23,14 +22,63 @@
 			      </select>
 			  </div>
 
-				<div class="col-md-5">
-		            <button v-if="isBusy == false" class="btn btn-primary" @click.prevent="getQuarterlySummary()">Download</button>
+				<div class="col-md-2">
+		            <button v-if="isBusy == false" class="btn btn-primary" @click.prevent="getQuarterlySummary()">Download via Excel</button>
 		            <button v-if="isBusy == true" class="btn btn-primary" disabled>Downloading....</button>
+		        </div>
+
+		        <div class="col-md-3">
+		            <button v-if="isBusy == false" class="btn btn-danger" @click.prevent="getQuarterlySummaryViaPdf()">Download via PDF</button>
+		            <button v-if="isBusy == true" class="btn btn-danger" disabled>Downloading....</button>
 		        </div>
         		</div>
 		        
     </form>
         </div>
+
+        <div v-if="salesRecords">
+	        <h1 class="text-center">Sales Records</h1>
+
+	        <v-client-table :columns="columns" v-model="salesRecords" :options="options">
+
+			    <div slot="child_row" slot-scope="props">
+			    	<v-client-table :columns="childColumns" v-model="props.row.data" :options="options">
+
+			    	</v-client-table>
+			    </div>
+
+			    <div slot="period_cover" slot-scope="props">
+	                {{props.row.period_from | formatDate}} to {{props.row.period_to | formatDate}}
+	             </div>
+
+
+	            <div slot="batch_number" slot-scope="props">
+	                {{props.row.id}}
+	             </div>
+		  	</v-client-table>
+	  	</div>
+
+	  	<div v-if="purchasesRecords">
+	        <h1 class="text-center">Purchases Records</h1>
+
+	        <v-client-table :columns="columns" v-model="purchasesRecords" :options="options">
+
+			    <div slot="child_row" slot-scope="props">
+			    	<v-client-table :columns="childColumns" v-model="props.row.data" :options="options">
+
+			    	</v-client-table>
+			    </div>
+
+			    <div slot="period_cover" slot-scope="props">
+	                {{props.row.period_from | formatDate}} to {{props.row.period_to | formatDate}}
+	             </div>
+
+
+	            <div slot="batch_number" slot-scope="props">
+	                {{props.row.id}}
+	             </div>
+		  	</v-client-table>
+	  	</div>
 
 	</div>
 </template>
@@ -80,14 +128,43 @@
 			    },
 			    checkedRows: [],
 			    form: {year: moment.now(), quarter: '1'},
-			    isBusy: false
+			    isBusy: false,
+			    salesRecords: [],
+			    purchasesRecords:[],
+			    childColumns: ['selected','contact_name','invoice_date','source','reference','description','tax','tax_rate','tax_rate_name','gross','net','actions'],
+				editableColumns:['quantity'],
+				columns: ['batch_number','period_cover','actions'],
+				options: {
+			      headings: {
+			      	selected: '',
+			        batch_number: 'Batch Number',
+			        created_at: 'Uploaded at'
+			      },
+			      sortable: ['gross', 'net'],
+			      filterable: ['gross', 'net'],
+			      salesRecord:{}
+			    },
 			}
 		},
 		mounted(){
-			//this.getQuartylySLSPSummary()
-			console.log(moment(moment.now()).year())
+			this.getQuartylySLSPSummary()
 		},
 		methods:{
+			updateQuarter(){
+				this.getQuartylySLSPSummary()
+			},
+			updateYear(){
+				this.form.year = moment(this.form.year).format('Y')
+				console.log(this.form.year)
+				this.getQuartylySLSPSummary()
+			},
+			getQuartylySLSPSummary(){
+				this.form.year = moment(this.form.year).format('Y')
+				axios.post('/get-slsp-summary', this.form).then((response) => {
+					this.salesRecords = response.data.sales
+					this.purchasesRecords = response.data.purchases
+				})
+			},
 			getQuarterlySummary(){
 				this.isBusy = true;
 				this.form.year = moment(this.form.year).format('Y')
@@ -108,6 +185,28 @@
                     link.href = window.URL.createObjectURL(blob)
                     link.download = 'quarterly-summary-report'+'.xlsx'
                     link.click()
+                })
+			},
+			getQuarterlySummaryViaPdf(){
+				this.isBusy = true;
+				this.form.year = moment(this.form.year).format('Y')
+				// axios.post('/download-quarterly-slsp-summary-via-pdf', this.form).then((response) => {
+					
+				// })
+
+				axios.post('/download-quarterly-slsp-summary-via-pdf', this.form,
+                {
+                    responseType: "blob"
+                }).then((response) => {
+                	this.isBusy = false;
+                    var fileURL = window.URL.createObjectURL(new Blob([response.data]));
+                   var fileLink = document.createElement('a');
+
+                   fileLink.href = fileURL;
+                   fileLink.setAttribute('download', 'file.zip');
+                   document.body.appendChild(fileLink);
+
+                   fileLink.click();
                 })
 			}
 		}

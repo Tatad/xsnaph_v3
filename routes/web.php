@@ -65,6 +65,10 @@ Route::post('/download-multiple-2307', [App\Http\Controllers\HomeController::cla
 
 Route::post('/remove-sales-batch-record', [App\Http\Controllers\HomeController::class, 'removeSalesBatchRecord'])->name('removeSalesBatchRecord');
 Route::post('/remove-purchases-batch-record', [App\Http\Controllers\HomeController::class, 'removePurchasesBatchRecord'])->name('removePurchasesBatchRecord');
+Route::post('/get-slsp-summary', [App\Http\Controllers\HomeController::class, 'getSLSPRecords'])->name('getSLSPRecords');
+Route::post('/download-quarterly-slsp-summary-via-pdf', [App\Http\Controllers\HomeController::class, 'downloadQuarterlySLSPViaPDF'])->name('downloadQuarterlySLSPViaPDF');
+
+
 
 
 
