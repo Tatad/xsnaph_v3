@@ -6,19 +6,6 @@
 		    	<button class="btn btn-danger" @click.prevent="showDeleteModal()">Delete Multiple Purchases Record</button>
 		    	<v-client-table :columns="childColumns" v-model="props.row.data" :options="options">
 
-		    		<!-- <div slot="quantity" slot-scope="{row, update, setEditing, isEditing, revertValue}">
-				      <span @click="setEditing(true)" v-if="!isEditing()">
-				        <a>{{row.quantity}}</a>
-				      </span>
-				      <span v-else>
-				        <input type="text" v-model="row.quantity">
-				        <button type="button" class="btn btn-info btn-xs" @click="update(row.quantity); setEditing(false)">Submit</button>
-				       <button type="button" class="btn btn-default btn-xs" @click="revertValue(); setEditing(false)">Cancel</button>
-				      
-				      </span>
-
-				    </div> -->
-
 				    <input slot="selected" slot-scope="props" type="checkbox" :value="props.row.id" v-model="checkedRows">
 
 				    <div slot="actions" slot-scope="props">
@@ -33,7 +20,7 @@
              </div>
 
              <div slot="actions" slot-scope="props">
-             	<a :href="/download-purchase/+props.row.id" target="_blank"><button class="btn btn-primary">Download</button></a>
+             	<!-- <a :href="/download-purchase/+props.row.id" target="_blank"><button class="btn btn-primary">Download</button></a> -->
              	<button class="btn btn-danger" @click.prevent="showDeleteModal(props.row,'all')">Remove</button>
              </div>
 

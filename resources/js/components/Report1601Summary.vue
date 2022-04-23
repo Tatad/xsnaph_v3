@@ -23,7 +23,7 @@
 			  </div>
 
 				<div class="col-md-2">
-		            <button v-if="isBusy == false" class="btn btn-primary" @click.prevent="getQuarterlySummary()">Download via Excel</button>
+		            <button v-if="isBusy == false" class="btn btn-primary" @click.prevent="downloadQuarterlySummary()">Download via Excel</button>
 		            <button v-if="isBusy == true" class="btn btn-primary" disabled>Downloading....</button>
 		        </div>
 
@@ -36,36 +36,20 @@
     </form>
         </div>
 
-        <div v-if="salesRecords">
-	        <h1 class="text-center">Sales Records</h1>
+        <div v-if="records">
+	        <h1 class="text-center">1601 E-Q Records</h1>
 
-	        <v-client-table :columns="columns" v-model="salesRecords" :options="options">
-
-			    <div slot="child_row" slot-scope="props">
-			    	<v-client-table :columns="childColumns" v-model="props.row.data" :options="options">
-
-			    	</v-client-table>
-			    </div>
-
-			    <div slot="period_cover" slot-scope="props">
-	                {{props.row.period_from | formatDate}} to {{props.row.period_to | formatDate}}
-	             </div>
-
-
-	            <div slot="batch_number" slot-scope="props">
-	                {{props.row.id}}
-	             </div>
-		  	</v-client-table>
-	  	</div>
-
-	  	<div v-if="purchasesRecords">
-	        <h1 class="text-center">Purchases Records</h1>
-
-	        <v-client-table :columns="columns" v-model="purchasesRecords" :options="options">
+	        <v-client-table :columns="columns" v-model="records" :options="options">
 
 			    <div slot="child_row" slot-scope="props">
 			    	<v-client-table :columns="childColumns" v-model="props.row.data" :options="options">
+			    		<div slot="amount_of_income_payment" slot-scope="props">
+			                {{props.row.quantity}}
+			             </div>
 
+			             <div slot="tax" slot-scope="props">
+			                {{props.row.gross}}
+			             </div>
 			    	</v-client-table>
 			    </div>
 
@@ -110,12 +94,13 @@
         },
 		data(){
 			return{
+			    form: {year: moment.now(), quarter: '1'},
 				defaultDate: '2018-12-04',
     			DatePickerFormat: 'yyyy',
-				childColumns: ['selected','contact_name','period_from','period_to','source','reference','description','tax','tax_rate','tax_rate_name','gross','net','actions'],
-				editableColumns:['quantity'],
-				columns: ['batch_number','created_at','actions'],
-				slspRecords: [],
+				records: [],
+				columns: ['batch_number','period_cover','actions'],
+				childColumns: ['contact_name','invoice_date','source','reference','description','amount_of_income_payment','tax','tax_rate'],
+			    isBusy: false,
 				options: {
 			      headings: {
 			      	selected: '',
@@ -126,50 +111,32 @@
 			      filterable: ['gross', 'net'],
 			      purchaseRecord:{}
 			    },
-			    checkedRows: [],
-			    form: {year: moment.now(), quarter: '1'},
-			    isBusy: false,
-			    salesRecords: [],
-			    purchasesRecords:[],
-			    childColumns: ['selected','contact_name','invoice_date','source','reference','description','tax','tax_rate','tax_rate_name','gross','net','actions'],
-				editableColumns:['quantity'],
-				columns: ['batch_number','period_cover','actions'],
-				options: {
-			      headings: {
-			      	selected: '',
-			        batch_number: 'Batch Number',
-			        created_at: 'Uploaded at'
-			      },
-			      sortable: ['gross', 'net'],
-			      filterable: ['gross', 'net'],
-			      salesRecord:{}
-			    },
+		      	filterable: ['gross', 'net'],
 			}
 		},
 		mounted(){
-			this.getQuartylySLSPSummary()
+			this.getQ1601Summary()
 		},
 		methods:{
 			updateQuarter(){
-				this.getQuartylySLSPSummary()
+				this.getQ1601Summary()
 			},
 			updateYear(){
 				this.form.year = moment(this.form.year).format('Y')
 				console.log(this.form.year)
-				this.getQuartylySLSPSummary()
+				this.getQ1601Summary()
 			},
-			getQuartylySLSPSummary(){
+			getQ1601Summary(){
 				this.form.year = moment(this.form.year).format('Y')
-				axios.post('/get-slsp-summary', this.form).then((response) => {
-					this.salesRecords = response.data.sales
-					this.purchasesRecords = response.data.purchases
+				axios.post('/get-1601-summary', this.form).then((response) => {
+					this.records = response.data
 				})
 			},
-			getQuarterlySummary(){
+			downloadQuarterlySummary(){
 				this.isBusy = true;
 				this.form.year = moment(this.form.year).format('Y')
 				//this.form.year = moment(String(this.form.year)).format('Y')
-				axios.post('/download-quarterly-slsp-summary',this.form,
+				axios.post('/download-quarterly-1601-summary',this.form,
                 {
                     headers: {
                         'Content-Type': 'application/json',
@@ -183,7 +150,7 @@
                     let blob = new Blob([response.data], { type: 'application/vnd.ms-excel' })
                     let link = document.createElement('a')
                     link.href = window.URL.createObjectURL(blob)
-                    link.download = 'quarterly-summary-report'+'.xlsx'
+                    link.download = '1601 E-Q'+'.xlsx'
                     link.click()
                 })
 			},

@@ -13,6 +13,7 @@ use App\Imports\SalesImport;
 use App\Exports\SalesExport;
 use App\Exports\PurchaseExport;
 use App\Exports\QuarterlySLSPExport;
+use App\Exports\Export1601EQ;
 use App\Imports\PeriodDates;
 use App\Models\Organizations;
 use App\Models\Reports2307;
@@ -22,6 +23,7 @@ use setasign\Fpdf\Fpdf;
 use LangleyFoxall\XeroLaravel\XeroApp;
 use League\OAuth2\Client\Token\AccessToken;
 use LangleyFoxall\XeroLaravel\OAuth2;
+use Barryvdh\DomPDF\Facade as PDF;
 
 class HomeController extends Controller
 {
@@ -99,6 +101,15 @@ class HomeController extends Controller
             $this->refreshXeroToken($request);
         }
         return view('report2307');
+    } 
+
+    public function report1601(Request $request){
+        if(collect($request->session()->get('access_token'))->isEmpty() ){
+            return redirect('/home');
+        }else{
+            $this->refreshXeroToken($request);
+        }
+        return view('reports1601');
     }    
 
     public function quarterlySLSPSummary(Request $request){
@@ -436,34 +447,38 @@ class HomeController extends Controller
         $grandTotalNet = 0;
         foreach($sales as $sale){
             $contactInfo = collect($contacts)->where('Name', $sale['contact_name'])->first();
-            //dd($contactInfo['TaxNumber']);
-            $sale['tin_number'] = ($contactInfo['TaxNumber']) ? (strpos($contactInfo['TaxNumber'], '-') == false ) ? $this->hyphenate(str_pad($contactInfo['TaxNumber'],9,"0")) : $contactInfo['TaxNumber'] : '--';
-            $sale['contact_name'] = $contactInfo['Name'];
-            $sale['first_name'] = $contactInfo['FirstName'];
-            $sale['last_name'] = $contactInfo['LastName'];
-            $sale['taxable_month'] = Carbon::parse($sale['invoice_date'])->endOfMonth()->format('d F Y');
+            if(collect($contactInfo)->isEmpty()){
+                return redirect('/sales-summary')->with('status','Error: '.$sale['contact_name'].' Contact not found.');
+            }else{
+                //dd($contactInfo['TaxNumber']);
+                $sale['tin_number'] = ($contactInfo['TaxNumber']) ? (strpos($contactInfo['TaxNumber'], '-') == false ) ? $this->hyphenate(str_pad($contactInfo['TaxNumber'],9,"0")) : $contactInfo['TaxNumber'] : '--';
+                $sale['contact_name'] = $contactInfo['Name'];
+                $sale['first_name'] = $contactInfo['FirstName'];
+                $sale['last_name'] = $contactInfo['LastName'];
+                $sale['taxable_month'] = Carbon::parse($sale['invoice_date'])->endOfMonth()->format('d F Y');
 
-            if(strpos($sale['tax_rate_name'], 'Tax Exempt Sales') == false){
-                $grandTotalNet += $sale['net']; 
+                if(strpos($sale['tax_rate_name'], 'Tax Exempt Sales') == false){
+                    $grandTotalNet += $sale['net']; 
+                }
+
+                if(strpos($sale['tax_rate_name'], 'Tax Exempt Sales') !== false){
+                    $taxExemptGrandTotal += $sale['net']; 
+                }
+
+                if(strpos($sale['tax_rate_name'], 'Zero Rated Sales') !== false){
+                    $zeroRatedGrandTotal += $sale['net']; 
+                }
+
+                if($contactInfo['Addresses'][0]){
+                    $sale['address'] = $contactInfo['Addresses'][0]['AddressLine1'].' '.$contactInfo['Addresses'][0]['City'].' '.$contactInfo['Addresses'][0]['Region'].' '.$contactInfo['Addresses'][0]['PostalCode'];
+                }
+
+                $taxTotal += $sale['tax']; 
+
+                $grossGrandTotal += $sale['gross']; 
+
+                $records[] = $sale;
             }
-
-            if(strpos($sale['tax_rate_name'], 'Tax Exempt Sales') !== false){
-                $taxExemptGrandTotal += $sale['net']; 
-            }
-
-            if(strpos($sale['tax_rate_name'], 'Zero Rated Sales') !== false){
-                $zeroRatedGrandTotal += $sale['net']; 
-            }
-
-            if($contactInfo['Addresses'][0]){
-                $sale['address'] = $contactInfo['Addresses'][0]['AddressLine1'].' '.$contactInfo['Addresses'][0]['City'].' '.$contactInfo['Addresses'][0]['Region'].' '.$contactInfo['Addresses'][0]['PostalCode'];
-            }
-
-            $taxTotal += $sale['tax']; 
-
-            $grossGrandTotal += $sale['gross']; 
-
-            $records[] = $sale;
         }
 
         $data['name'] = $xero->organisations()->first()->Name;
@@ -517,51 +532,53 @@ class HomeController extends Controller
 
         foreach($purchases as $purchase){
             $contactInfo = collect($contacts)->where('Name', $purchase['contact_name'])->first();
-            //dd($contactInfo['TaxNumber']);
-            //$purchase['tin_number'] = ($contactInfo['TaxNumber']) ? $contactInfo['TaxNumber'] : 'N/A';
-            $purchase['tin_number'] = ($contactInfo['TaxNumber']) ? (strpos($contactInfo['TaxNumber'], '-') == false ) ? $this->hyphenate(str_pad($contactInfo['TaxNumber'],9,"0")) : $contactInfo['TaxNumber'] : '--';
-            $purchase['contact_name'] = $contactInfo['Name'];
-            $purchase['first_name'] = $contactInfo['FirstName'];
-            $purchase['last_name'] = $contactInfo['LastName'];
-            $purchase['taxable_month'] = Carbon::parse($purchase['invoice_date'])->endOfMonth()->format('d F Y');
+            if(collect($contactInfo)->isEmpty()){
+                return redirect('/sales-summary')->with('status','Error: '.$sale['contact_name'].' Contact not found.');
+            }else{
+                $purchase['tin_number'] = ($contactInfo['TaxNumber']) ? (strpos($contactInfo['TaxNumber'], '-') == false ) ? $this->hyphenate(str_pad($contactInfo['TaxNumber'],9,"0")) : $contactInfo['TaxNumber'] : '--';
+                $purchase['contact_name'] = $contactInfo['Name'];
+                $purchase['first_name'] = $contactInfo['FirstName'];
+                $purchase['last_name'] = $contactInfo['LastName'];
+                $purchase['taxable_month'] = Carbon::parse($purchase['invoice_date'])->endOfMonth()->format('d F Y');
 
-            if(strpos($purchase['tax_rate_name'], 'Tax on Purchases') == false){
-                $grandTotalNet += $purchase['net']; 
+                if(strpos($purchase['tax_rate_name'], 'Tax on Purchases') == false){
+                    $grandTotalNet += $purchase['net']; 
+                }
+
+                if(strpos($purchase['tax_rate_name'], 'Tax on Purchases') !== false){
+                    $grandTotalTaxablePurchase += $purchase['net']; 
+                }
+
+                if(strpos($purchase['tax_rate_name'], 'Tax Exempt') !== false){
+                    $taxExemptGrandTotal += $purchase['net']; 
+                }
+
+                if(strpos($purchase['tax_rate_name'], 'Zero Rated') !== false){
+                    $zeroRatedGrandTotal += $purchase['net']; 
+                }
+
+                if(strpos($purchase['tax_rate_name'], 'VAT on Purchases (Goods)') !== false){
+                    $purchaseGoodsOtherThanCapitalGoodsTotal += $purchase['net']; 
+                }
+
+                if(strpos($purchase['tax_rate_name'], 'VAT on Purchases (Capital Goods)') !== false){
+                    $vatOnPurchaseCapitalGoodsTotal += $purchase['net']; 
+                }
+
+                if(strpos($purchase['tax_rate_name'], 'VAT on Purchases (Services)') !== false){
+                    $vatOnPurchaseServicesTotal += $purchase['net']; 
+                }
+
+                if($contactInfo['Addresses'][0]){
+                    $purchase['address'] = $contactInfo['Addresses'][0]['AddressLine1'].' '.$contactInfo['Addresses'][0]['City'].' '.$contactInfo['Addresses'][0]['Region'].' '.$contactInfo['Addresses'][0]['PostalCode'];
+                }
+
+                $taxTotal += $purchase['tax']; 
+
+                $grossGrandTotal += $purchase['gross']; 
+
+                $records[] = $purchase;
             }
-
-            if(strpos($purchase['tax_rate_name'], 'Tax on Purchases') !== false){
-                $grandTotalTaxablePurchase += $purchase['net']; 
-            }
-
-            if(strpos($purchase['tax_rate_name'], 'Tax Exempt') !== false){
-                $taxExemptGrandTotal += $purchase['net']; 
-            }
-
-            if(strpos($purchase['tax_rate_name'], 'Zero Rated') !== false){
-                $zeroRatedGrandTotal += $purchase['net']; 
-            }
-
-            if(strpos($purchase['tax_rate_name'], 'VAT on Purchases (Goods)') !== false){
-                $purchaseGoodsOtherThanCapitalGoodsTotal += $purchase['net']; 
-            }
-
-            if(strpos($purchase['tax_rate_name'], 'VAT on Purchases (Capital Goods)') !== false){
-                $vatOnPurchaseCapitalGoodsTotal += $purchase['net']; 
-            }
-
-            if(strpos($purchase['tax_rate_name'], 'VAT on Purchases (Services)') !== false){
-                $vatOnPurchaseServicesTotal += $purchase['net']; 
-            }
-
-            if($contactInfo['Addresses'][0]){
-                $purchase['address'] = $contactInfo['Addresses'][0]['AddressLine1'].' '.$contactInfo['Addresses'][0]['City'].' '.$contactInfo['Addresses'][0]['Region'].' '.$contactInfo['Addresses'][0]['PostalCode'];
-            }
-
-            $taxTotal += $purchase['tax']; 
-
-            $grossGrandTotal += $purchase['gross']; 
-
-            $records[] = $purchase;
         }
 
         $data['name'] = $xero->organisations()->first()->Name;
@@ -660,6 +677,94 @@ class HomeController extends Controller
         //dd(collect($purchasesRecords)->sortBy('month')->groupBy('month_name')->toArray());
         return ['salesRecords' => collect($salesRecords)->sortBy('month')->groupBy('month_name')->toArray(), 'purchasesRecords' => collect($purchasesRecords)->sortBy('month')->groupBy('month_name')->toArray()];
 
+    }
+
+    public function downloadQuarterly1601Summary(Request $request){
+        $input = $request->all();
+        //dd($input);
+        $this->refreshXeroToken($request);
+        //$year = '2022';
+        $year = $input['year'];
+        $now = Carbon::now();
+        $fromQuarter = $now->lastOfQuarter();
+        //$input['quarter'] = 1;
+
+        switch ($input['quarter']) {
+            case 1:
+                $now = new Carbon('first day of January '.$year, 'Asia/Manila');
+                break;
+            case 2:
+                $now = new Carbon('first day of April '.$year, 'Asia/Manila');
+                break;
+            case 3:
+                $now = new Carbon('first day of July '.$year, 'Asia/Manila');
+                break;
+            default:
+                $now = new Carbon('first day of October '.$year, 'Asia/Manila');
+        }
+        $fromQuarter = Carbon::parse($now)->firstOfQuarter()->toDateTimeString();
+        $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
+
+        $salesRecords = DB::table('reports_2307')->select('reports_2307.*',  DB::raw('YEAR(invoice_date) year, MONTH(invoice_date) month, MONTHNAME(invoice_date) month_name'))->whereBetween('invoice_date',[$fromQuarter,$lastQuarter])->get();
+
+        $orgInfo = DB::table('organizations')->where('org_id',$request->session()->get('xeroOrg')->id)->first();
+
+        if(collect($orgInfo)->isNotEmpty()){
+            $orgInfo->address = $orgInfo->street.' '.$orgInfo->barangay.' '.$orgInfo->city.' '.$orgInfo->province.' '.$orgInfo->zip_code;
+        }
+        //$salesRecords = collect($salesRecords)->sortBy('month')->groupBy('month_name')->values()->toArray();
+
+        $xero = new XeroApp(
+            new AccessToken(collect(json_decode($request->session()->get('access_token')))->toArray() ),
+            $request->session()->get('xeroOrg')->tenant_id
+        );
+
+        $contacts = $xero->contacts()->get();
+
+        $salesRecordsResults = [];
+        $purchasesRecordsResults = [];
+        $grossGrandTotalSales = 0;
+        $taxTotalSales = 0;
+        $zeroRatedGrandTotalSales = 0;
+        $taxExemptGrandTotalSales = 0;
+        $grandTotalNetSales = 0;
+
+        $grossGrandTotalPurchase = 0;
+        $taxTotalPurchase = 0;
+        $zeroRatedGrandTotalPurchase = 0;
+        $taxExemptGrandTotalPurchase = 0;
+        $grandTotalNetPurchase = 0;
+        $grandTotalTaxablePurchase = 0;
+
+        $salesMonths = [];
+        $purchaseMonths = [];
+        $salesRecordConverted = collect($salesRecords)->values()->toArray();
+        foreach(($salesRecordConverted) as $key => $data){
+            $contactInfo = collect($contacts)->where('Name', $data->contact_name)->first();
+            $data->tin_number = ($contactInfo->TaxNumber) ? (strpos($contactInfo->TaxNumber, '-') == false ) ? $this->hyphenate(str_pad($contactInfo->TaxNumber,9,"0")) : $contactInfo->TaxNumber : '--';
+            
+            $data->contact_name = $contactInfo->Name;
+            $data->first_name = $contactInfo->FirstName;
+            $data->last_name = $contactInfo->LastName;
+
+            $data->taxable_month = Carbon::parse($data->invoice_date)->endOfMonth()->format('d F Y');
+
+            if($contactInfo['Addresses'][0]){
+                $data->address = $contactInfo['Addresses'][0]['AddressLine1'].' '.$contactInfo['Addresses'][0]['City'].' '.$contactInfo['Addresses'][0]['Region'].' '.$contactInfo['Addresses'][0]['PostalCode'];
+            }
+
+            $taxTotalSales += $data->gross; 
+
+            $grossGrandTotalSales += $data->gross; 
+            $salesRecordsResults[] = $data;
+            $salesMonths[] = $data->month;
+        }
+        // $export = new Export1601EQ($salesMonths, $orgInfo, $year);
+        // return \Excel::download($export, 'sales.xlsx');
+        // dd($salesRecordsResults);
+        $export = new Export1601EQ(collect($salesRecordsResults)->toArray(),$orgInfo,$year, Carbon::parse($lastQuarter)->format('F'));
+        //dd($export);
+        return \Excel::download($export, '1601.xlsx');
     }
 
     public function downloadQuarterlySLSPSummary(Request $request){
@@ -1540,10 +1645,10 @@ class HomeController extends Controller
             //     $zip->close();
             // }
     }
-    File::deleteDirectory($path);
-    //return \Response::download($fileName)->deleteFileAfterSend(true);
-    //return \Response::download($fileName)->deleteFileAfterSend(true);
-    return response()->download($fileName)->deleteFileAfterSend(true);
+        File::deleteDirectory($path);
+        //return \Response::download($fileName)->deleteFileAfterSend(true);
+        //return \Response::download($fileName)->deleteFileAfterSend(true);
+        return response()->download($fileName)->deleteFileAfterSend(true);
     }
 
     public function removeSalesBatchRecord(Request $request){
@@ -1556,5 +1661,187 @@ class HomeController extends Controller
         $input = $request->all();
         DB::table('purchases')->where('batch_number', $input['id'])->delete();
         return 'success';
+    }
+
+    public function get1601Records(Request $request){
+        $input = $request->all();
+        //dd($input);
+        //$input['year'] = '2022';
+        $year = $input['year'];
+        $now = Carbon::now();
+        $fromQuarter = $now->lastOfQuarter();
+        //$input['quarter'] = 1;
+        switch ($input['quarter']) {
+            case 1:
+                $now = new Carbon('first day of January '.$year, 'Asia/Manila');
+                break;
+            case 2:
+                $now = new Carbon('first day of April '.$year, 'Asia/Manila');
+                break;
+            case 3:
+                $now = new Carbon('first day of July '.$year, 'Asia/Manila');
+                break;
+            default:
+                $now = new Carbon('first day of October '.$year, 'Asia/Manila');
+        }
+        $fromQuarter = Carbon::parse($now)->firstOfQuarter()->toDateTimeString();
+        $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
+        
+        $get1601Records = DB::table('reports_2307')->where('org_id', '=', $request->session()->get('xeroOrg')->id)->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
+
+        $records = [];
+        foreach($get1601Records as $key => $record){
+            $records[$record->batch_number]['id'] = $record->batch_number;
+            $records[$record->batch_number]['created_at'] = $record->created_at;
+            $records[$record->batch_number]['period_from'] = $record->period_from;
+            $records[$record->batch_number]['period_to'] = $record->period_to;
+            $records[$record->batch_number]['data'][] = $record;
+        }
+
+        return collect($records)->values()->toArray();
+    }
+
+    public function getSLSPRecords(Request $request){
+        $input = $request->all();
+
+        $year = $input['year'];
+        $now = Carbon::now();
+        $fromQuarter = $now->lastOfQuarter();
+
+        switch ($input['quarter']) {
+            case 1:
+                $now = new Carbon('first day of January '.$year, 'Asia/Manila');
+                break;
+            case 2:
+                $now = new Carbon('first day of April '.$year, 'Asia/Manila');
+                break;
+            case 3:
+                $now = new Carbon('first day of July '.$year, 'Asia/Manila');
+                break;
+            default:
+                $now = new Carbon('first day of October '.$year, 'Asia/Manila');
+        }
+        $fromQuarter = Carbon::parse($now)->firstOfQuarter()->toDateTimeString();
+        $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
+        
+        $getSalesRecords = DB::table('sales')->where('org_id', '=', $request->session()->get('xeroOrg')->id)->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
+
+        $salesRecords = [];
+        foreach($getSalesRecords as $key => $record){
+            $salesRecords[$record->batch_number]['id'] = $record->batch_number;
+            $salesRecords[$record->batch_number]['created_at'] = $record->created_at;
+            $salesRecords[$record->batch_number]['period_from'] = $record->period_from;
+            $salesRecords[$record->batch_number]['period_to'] = $record->period_to;
+            $salesRecords[$record->batch_number]['data'][] = $record;
+        }
+
+        $getPurchasesRecords = DB::table('purchases')->where('org_id', '=', $request->session()->get('xeroOrg')->id)->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
+
+        $purchasesRecords = [];
+        foreach($getPurchasesRecords as $key => $record){
+            $purchasesRecords[$record->batch_number]['id'] = $record->batch_number;
+            $purchasesRecords[$record->batch_number]['created_at'] = $record->created_at;
+            $purchasesRecords[$record->batch_number]['period_from'] = $record->period_from;
+            $purchasesRecords[$record->batch_number]['period_to'] = $record->period_to;
+            $purchasesRecords[$record->batch_number]['data'][] = $record;
+        }
+
+        return ['sales' => collect($salesRecords)->values()->toArray(), 'purchases' => collect($purchasesRecords)->values()->toArray()];
+    }
+
+    public function downloadQuarterlySLSPViaPDF(Request $request){
+        $this->refreshXeroToken($request);
+        $input = $request->all();
+        //dd($input);
+        $year = $input['year'];
+        // $year = "2022";
+        // $input['quarter'] = 1;
+        $now = Carbon::now();
+        $fromQuarter = $now->lastOfQuarter();
+
+        switch ($input['quarter']) {
+            case 1:
+                $now = new Carbon('first day of January '.$year, 'Asia/Manila');
+                break;
+            case 2:
+                $now = new Carbon('first day of April '.$year, 'Asia/Manila');
+                break;
+            case 3:
+                $now = new Carbon('first day of July '.$year, 'Asia/Manila');
+                break;
+            default:
+                $now = new Carbon('first day of October '.$year, 'Asia/Manila');
+        }
+        $fromQuarter = Carbon::parse($now)->firstOfQuarter()->toDateTimeString();
+        $lastQuarter = Carbon::parse($now)->lastOfQuarter()->toDateTimeString();
+        
+        $getSalesRecords = DB::table('sales')->where('org_id', '=', $request->session()->get('xeroOrg')->id)->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
+
+        $salesRecords = collect($getSalesRecords)->groupBy(function($d) {
+             return Carbon::parse($d->invoice_date)->format('m');
+        });
+
+        $getPurchasesRecords = DB::table('purchases')->where('org_id', '=', $request->session()->get('xeroOrg')->id)->whereBetween('invoice_date', [$fromQuarter,$lastQuarter])->get();
+
+        $purchasesRecords = collect($getPurchasesRecords)->groupBy(function($d) {
+             return Carbon::parse($d->invoice_date)->format('m');
+        });
+
+        $orgInfo = DB::table('organizations')->where('org_id',$request->session()->get('xeroOrg')->id)->first();
+
+        if(collect($orgInfo)->isNotEmpty()){
+            $orgInfo->address = $orgInfo->street.' '.$orgInfo->barangay.' '.$orgInfo->city.' '.$orgInfo->province.' '.$orgInfo->zip_code;
+        }
+
+        $xero = new XeroApp(
+            new AccessToken(collect(json_decode($request->session()->get('access_token')))->toArray() ),
+            $request->session()->get('xeroOrg')->tenant_id
+        );
+
+        $contacts = $xero->contacts()->get();
+        $path = \Str::random(40);
+        if (!file_exists($path)) {
+            File::makeDirectory($path);
+        }
+
+        foreach(collect($salesRecords)->values()->toArray() as $key => $data){
+            $salesData = collect($data)->values()->toArray();
+            $fileName = \Str::random(40);
+            $pdf = \PDF::loadView('pdf.sales', ['salesData' => $salesData, 'org' => $orgInfo, 'contacts' => $contacts])->setPaper('a4', 'landscape')->save($path.'/'.$fileName.'.pdf');
+            //return $pdf->stream();            
+        }
+
+        foreach(collect($purchasesRecords)->values()->toArray() as $key => $data){
+            $purchasesData = collect($data)->values()->toArray();
+            $fileName = \Str::random(40);
+            $pdf = \PDF::loadView('pdf.purchases', ['purchasesData' => $purchasesData, 'org' => $orgInfo, 'contacts' => $contacts])->setPaper('a4', 'landscape')->save($path.'/'.$fileName.'.pdf');
+            //return $pdf->stream();            
+        }
+        $zip = new ZipArchive;
+
+        $fileName = 'zipFileName.zip';
+
+        if ($zip->open(public_path($fileName), ZipArchive::CREATE) === TRUE)
+        {
+            $files = File::files(public_path($path));
+        
+            // loop the files result
+            foreach ($files as $key => $value) {
+                $relativeNameInZipFile = basename($value);
+                $zip->addFile($value, $relativeNameInZipFile);
+            }
+             
+            $zip->close();
+        }
+
+        File::deleteDirectory($path);
+
+        return response()->download($fileName)->deleteFileAfterSend(true);
+    }
+
+    public function testDat(){
+        $myfile = fopen("newfile.dat", "w") or die("Unable to open file!");
+        fwrite($myfile, "Content to write to file");
+        fclose($myfile);
     }
 }
