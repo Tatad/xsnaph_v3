@@ -28,6 +28,7 @@ Route::get('/switch-organisation', [App\Http\Controllers\HomeController::class, 
 Route::get('/select-organization/{id}', [App\Http\Controllers\HomeController::class, 'dashboard'])->name('dashboard');
 Route::get('/sales-summary/', [App\Http\Controllers\HomeController::class, 'sales'])->name('sales');
 Route::get('/reports-2307-summary/', [App\Http\Controllers\HomeController::class, 'report2307'])->name('report2307');
+Route::get('/reports-1601-summary/', [App\Http\Controllers\HomeController::class, 'report1601'])->name('report1601');
 Route::get('/purchases-summary/', [App\Http\Controllers\HomeController::class, 'purchase'])->name('purchase');
 Route::get('/quarterly-slsp-summary/', [App\Http\Controllers\HomeController::class, 'quarterlySLSPSummary'])->name('quarterlySLSPSummary');
 Route::get('/get-rdo-codes', [App\Http\Controllers\HomeController::class, 'getRDOCodes'])->name('getRDOCodes');
@@ -45,7 +46,7 @@ Route::get('/get-purchases-records', [App\Http\Controllers\HomeController::class
 Route::get('/get-quarterly-slsp-summary', [App\Http\Controllers\HomeController::class, 'getQuarterlySLSPSummary'])->name('getQuarterlySLSPSummary');
 
 Route::post('/download-quarterly-slsp-summary', [App\Http\Controllers\HomeController::class, 'downloadQuarterlySLSPSummary'])->name('downloadQuarterlySLSPSummary');
-
+Route::post('/download-quarterly-1601-summary', [App\Http\Controllers\HomeController::class, 'downloadQuarterly1601Summary'])->name('downloadQuarterly1601Summary');
 
 
 Route::get('/download-sales/{id}', [App\Http\Controllers\HomeController::class, 'downloadSales'])->name('downloadSales');
@@ -66,7 +67,10 @@ Route::post('/download-multiple-2307', [App\Http\Controllers\HomeController::cla
 Route::post('/remove-sales-batch-record', [App\Http\Controllers\HomeController::class, 'removeSalesBatchRecord'])->name('removeSalesBatchRecord');
 Route::post('/remove-purchases-batch-record', [App\Http\Controllers\HomeController::class, 'removePurchasesBatchRecord'])->name('removePurchasesBatchRecord');
 Route::post('/get-slsp-summary', [App\Http\Controllers\HomeController::class, 'getSLSPRecords'])->name('getSLSPRecords');
+Route::post('/get-1601-summary', [App\Http\Controllers\HomeController::class, 'get1601Records'])->name('get1601Records');
 Route::post('/download-quarterly-slsp-summary-via-pdf', [App\Http\Controllers\HomeController::class, 'downloadQuarterlySLSPViaPDF'])->name('downloadQuarterlySLSPViaPDF');
+
+Route::get('/test-dat', [App\Http\Controllers\HomeController::class, 'testDat'])->name('testDat');
 
 
 

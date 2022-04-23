@@ -26,6 +26,7 @@ Vue.component('sales-records', require('./components/SalesRecords.vue').default)
 Vue.component('purchases-summary', require('./components/PurchasesSummary.vue').default);
 Vue.component('quarterly-slsp-summary', require('./components/QuarterlySLSPSummary.vue').default);
 Vue.component('report-2307-summary', require('./components/Report2307Summary.vue').default);
+Vue.component('reports-1601-summary', require('./components/Report1601Summary.vue').default);
 Vue.component('yearpicker', require('./components/YearPicker.vue').default);
 
 /**
