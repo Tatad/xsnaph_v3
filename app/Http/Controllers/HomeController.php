@@ -281,13 +281,13 @@ class HomeController extends Controller
         foreach($results[0] as $key => $rows){
             if ($key < 7) continue;
             if($rows[0] != 'Total' && collect($rows[0])->isNotEmpty()){
-                //dd(Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[2])))->format('Y-m-d'));
+                //dd($rows);
                 Reports2307::create([
                     'batch_number' => ((collect($getSalesBatchNumber)->isEmpty()) ? 1 : ($getSalesBatchNumber->batch_number+1)),
                     'org_id' => $input['org_id'],
                     'period_from' => $parsedPeriodFrom,
                     'period_to' => $parsedPeriodTo,
-                    'invoice_date' => ((is_float($rows[2]) || is_int($rows[2])) ? Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[0])))->format('Y-m-d') : Carbon::parse($rows[0])->format('Y-m-d') ),
+                    'invoice_date' => ((is_float($rows[0]) || is_int($rows[0])) ? Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(intval($rows[0])))->format('Y-m-d') : Carbon::parse($rows[0])->format('Y-m-d') ),
                     'contact_name' => $rows[1],
                     'source' => $rows[2],
                     'reference' => $rows[3],
