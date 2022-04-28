@@ -41,8 +41,10 @@ class XeroController extends Controller
         //dd($selectedTenant->tenantId);
 
         foreach($tenants as $key => $tenant){
-            $xeroCheck = DB::table('user_organizations')->where(['tenant_id' => $tenant->tenantId])->first();
-            if(collect($xeroCheck)->isEmpty()){
+            //$xeroCheck = DB::table('user_organizations')->where(['tenant_id' => $tenant->tenantId, ''])->first();
+            $userOrgCheck = UserOrganization::where(['user_id' => auth()->user()->id, 'tenant_id' => $tenant->tenantId])->first();
+            //dd($xeroCheck);
+            if(collect($userOrgCheck)->isEmpty()){
                 $xero = new XeroApp(
                     new AccessToken(collect($accessToken)->toArray()),
                     $tenant->tenantId
@@ -63,15 +65,9 @@ class XeroController extends Controller
                 DB::table('user_to_organizations')->insert([
                     'user_id' => auth()->user()->id,
                     'org_id' => $userOrg->id,
-                    'role' => 'owner'
-                ]);
-                
-            }else{
-                DB::table('user_to_organizations')->insert([
-                    'user_id' => auth()->user()->id,
-                    'org_id' => $xeroCheck->id,
                     'role' => 'member'
                 ]);
+                
             }
         }
         return redirect('/home')->with('status', 'Organisation update success!');
